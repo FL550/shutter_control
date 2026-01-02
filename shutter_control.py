@@ -1,3 +1,4 @@
+#!/usr/bin/python
 import serial
 from enum import Enum
 from time import sleep
@@ -121,7 +122,7 @@ def publish_position10(device: Device):
     mqttc.publish(position_topic(device.value["name"]), "10", 0, True)
 
 def publish_discovery():
-    print(f"Status: {mqttc.is_connected()}")
+    #print(f"Status: {mqttc.is_connected()}")
     for device in Device:
         discovery = f"""
         {{
@@ -178,7 +179,7 @@ def on_message(client, userdata, message):
         device = Device.WOHNZIMMER
     else:
         return
-
+    print(device)
     if payload == "OPEN" or payload == "100":
         open(device)
     elif payload == "CLOSE" or payload == "0":
@@ -190,7 +191,8 @@ def on_message(client, userdata, message):
     elif payload == "40":
         position40(device)
 
-    sleep(2)
+    #sleep(2)
+
 
 
 ### Start of main program
@@ -198,7 +200,7 @@ def on_message(client, userdata, message):
 #ser = serial.Serial("/dev/ttyUSB0", 115200)  # open serial port
 ser = serial.Serial()
 ser.baudrate = 115200
-ser.port = '/dev/ttyUSB0'
+ser.port = '/dev/ttyUSB1'
 
 ser.open()
 while True:
@@ -209,10 +211,16 @@ while True:
     )
     sleep(0.1)
     response = ser.read(ser.in_waiting).decode("utf-8")
-    root = ET.fromstring(response)
-    if (root[0][0].text == "selve.GW.service.getState") & (root[0][1].text == "3"):
-        print(f"Sucessfully connected to Selve Gateway on {ser.name}")
-        break
+    if len(response) == 0:
+        print(f"No connection to Selve Gateway on {ser.port}")
+        if ser.port == '/dev/ttyUSB1':
+            ser.port = '/dev/ttyUSB0'
+        sleep(5)
+    else:
+        root = ET.fromstring(response)
+        if (root[0][0].text == "selve.GW.service.getState") & (root[0][1].text == "3"):
+            print(f"Sucessfully connected to Selve Gateway on {ser.name}")
+            break
 
 mqttc = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
 mqttc.on_connect = on_connect
